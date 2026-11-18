@@ -1,11 +1,11 @@
 
 {
     "schema_version": 1,
-    "version": "1.0.0",
-    "published_at": "2026-11-16",
+    "version": "0.1.0",
+    "published_at": "2026-11-17",
     "release_notes": [
-        "Первая версия системы обновлений"
+        "Начальная версия Laboratory"
     ],
-    "installer_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/download/v1.0.0/LaboratorySetup_1.0.0.exe",
+    "installer_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/download/v0.1.0/Laboratory_Setup_0.1.0.exe",
     "sha256": "ВСТАВИТЬ_SHA256_УСТАНОВЩИКА"
 }
