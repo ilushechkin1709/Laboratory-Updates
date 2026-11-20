@@ -1,0 +1,95 @@
+
+name: Update latest manifest
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download release installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "Laboratory_Setup_*.exe" \
+            --dir ./release
+
+      - name: Calculate SHA-256
+        id: hash
+        run: |
+          FILE=$(find ./release -name "Laboratory_Setup_*.exe" | head -n 1)
+
+          if [ -z "$FILE" ]; then
+            echo "Installer not found"
+            exit 1
+          fi
+
+          HASH=$(sha256sum "$FILE" | awk '{print $1}')
+          echo "sha256=$HASH" >> "$GITHUB_OUTPUT"
+          echo "installer=$FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Update latest.json
+        env:
+          VERSION: ${{ github.ref_name }}
+          SHA256: ${{ steps.hash.outputs.sha256 }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          tag = os.environ["VERSION"]
+          version = tag.removeprefix("v")
+          sha256 = os.environ["SHA256"]
+          repository = os.environ["REPOSITORY"]
+
+          manifest_path = Path("latest.json")
+
+          if manifest_path.exists():
+              data = json.loads(manifest_path.read_text(encoding="utf-8"))
+          else:
+              data = {"schema_version": 1}
+
+          data.update({
+              "schema_version": 1,
+              "version": version,
+              "published_at": datetime.now(timezone.utc).date().isoformat(),
+              "release_url": f"https://github.com/{repository}/releases/tag/{tag}",
+              "installer_url": (
+                  f"https://github.com/{repository}/releases/download/"
+                  f"{tag}/Laboratory_Setup_{version}.exe"
+              ),
+              "sha256": sha256
+          })
+
+          manifest_path.write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8"
+          )
+
+          print("Updated latest.json:")
+          print(json.dumps(data, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Commit manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "Update manifest for ${GITHUB_REF_NAME}" || exit 0
+          git push origin HEAD:main
