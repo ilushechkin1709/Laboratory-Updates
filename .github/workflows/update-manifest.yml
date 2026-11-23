@@ -5,11 +5,9 @@ on:
   release:
     types: [published]
 
-# Разрешаем GitHub Actions обновлять latest.json в репозитории.
 permissions:
   contents: write
 
-# Не допускаем одновременную запись нескольких workflow в main.
 concurrency:
   group: update-latest-manifest
   cancel-in-progress: false
@@ -19,13 +17,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Получаем содержимое репозитория.
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
 
-      # 2. Получаем информацию о опубликованном релизе.
       - name: Get release information
         env:
           GH_TOKEN: ${{ github.token }}
@@ -35,12 +31,12 @@ jobs:
             --json body,publishedAt,url \
             > release.json
 
-      # 3. Проверяем версию и скачиваем установщик.
-      - name: Download installer
+      - name: Normalize version and download installer
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="$GITHUB_REF_NAME"
+          RELEASE_TAG="$GITHUB_REF_NAME"
+          VERSION="${RELEASE_TAG#v}"
 
           if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
             echo "Invalid release version: $VERSION"
@@ -51,7 +47,7 @@ jobs:
 
           mkdir -p release
 
-          gh release download "$VERSION" \
+          gh release download "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --pattern "$INSTALLER" \
             --dir release
@@ -61,69 +57,59 @@ jobs:
             exit 1
           fi
 
+          echo "Release tag: $RELEASE_TAG"
+          echo "Application version: $VERSION"
           echo "Installer downloaded: $INSTALLER"
 
-      # 4. Рассчитываем SHA-256.
       - name: Calculate SHA-256
         id: hash
         run: |
-          VERSION="$GITHUB_REF_NAME"
+          VERSION="${GITHUB_REF_NAME#v}"
           INSTALLER="release/Laboratory_Setup_${VERSION}.exe"
 
           HASH=$(sha256sum "$INSTALLER" | awk '{print $1}')
 
           echo "sha256=$HASH" >> "$GITHUB_OUTPUT"
-
           echo "Installer SHA-256: $HASH"
 
-      # 5. Формируем новый latest.json.
       - name: Generate latest.json
         env:
-          VERSION: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
           SHA256: ${{ steps.hash.outputs.sha256 }}
         run: |
           python - <<'PY'
           import json
           import os
           import re
-          from datetime import datetime, timezone
           from pathlib import Path
 
-          version = os.environ["VERSION"]
+          release_tag = os.environ["RELEASE_TAG"]
+          version = release_tag.removeprefix("v")
           sha256 = os.environ["SHA256"]
           repository = os.environ["GITHUB_REPOSITORY"]
 
           if not re.fullmatch(r"\d+(\.\d+)*", version):
-              raise ValueError("Invalid version")
+              raise ValueError(f"Invalid version: {version}")
 
           release = json.loads(
               Path("release.json").read_text(encoding="utf-8")
           )
 
-          release_notes = release.get("body") or ""
-
           manifest = {
               "schema_version": 1,
               "version": version,
-              "published_at": (
-                  release.get("publishedAt")
-                  or datetime.now(timezone.utc).isoformat()
-              ),
-              "release_notes": release_notes,
+              "published_at": release.get("publishedAt"),
+              "release_notes": release.get("body") or "",
               "release_url": release["url"],
               "installer_url": (
                   f"https://github.com/{repository}/releases/download/"
-                  f"{version}/Laboratory_Setup_{version}.exe"
+                  f"{release_tag}/Laboratory_Setup_{version}.exe"
               ),
               "sha256": sha256
           }
 
           Path("latest.json").write_text(
-              json.dumps(
-                  manifest,
-                  ensure_ascii=False,
-                  indent=2
-              ) + "\n",
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8"
           )
 
@@ -131,7 +117,6 @@ jobs:
           print(json.dumps(manifest, ensure_ascii=False, indent=2))
           PY
 
-      # 6. Публикуем обновлённый манифест в main.
       - name: Commit and push latest.json
         run: |
           git config user.name "github-actions[bot]"
@@ -146,5 +131,4 @@ jobs:
           fi
 
           git commit -m "Update manifest for ${GITHUB_REF_NAME}"
-
           git push origin HEAD:main
