@@ -1,12 +1,9 @@
 {
-    "schema_version": 1,
-    "version": "0.2.0",
-    "published_at": "2026-11-19",
-    "release_notes": [
-        "Добавлена система обновлений",
-        "Улучшена стабильность приложения"
-    ],
-    "release_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/tag/v0.2.0",
-    "installer_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/download/v0.2.0/Laboratory_Setup_0.2.0.exe",
-    "sha256": "457DB440941B743F5DC62505528E7FDE6E8326BD81F31E6AA542063E548BB83E"
+  "schema_version": 1,
+  "version": "0.2.1",
+  "published_at": "2026-11-24T05:58:05Z",
+  "release_notes": "обновление!",
+  "release_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/tag/0.2.1",
+  "installer_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/download/0.2.1/Laboratory_Setup_0.2.1.exe",
+  "sha256": "a35ef2b1c8e55aa5a60dadc0d4b17ae979649e69b24db44a98a51de4c847bfbe"
 }
