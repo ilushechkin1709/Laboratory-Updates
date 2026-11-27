@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "published_at": "2026-11-24T13:47:51Z",
   "release_notes": "- Добавлены уведомления;\r\n- Исправлены ошибки обновления;\r\n- Улучшена стабильность приложения\r\n- Добавлен планировщик задач",
   "release_url": "https://github.com/ilushechkin1709/Laboratory-Updates/releases/tag/0.2.2",
